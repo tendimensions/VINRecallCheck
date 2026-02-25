@@ -13,12 +13,14 @@ class RecallTrackerGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("VIN Recall Tracker")
-        self.root.geometry("1200x800")
+        self.root.geometry("900x600")
         
         self.data_file = 'recall_check_results.json'
         self.settings_file = 'vin_settings.json'
         self.recall_data = []
         self.is_checking = False
+        self.has_unsaved_changes = False
+        self.show_resolved = True  # Default to showing resolved recalls
         
         self.setup_ui()
         self.check_startup_conditions()
@@ -66,16 +68,23 @@ class RecallTrackerGUI:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(1, weight=1)
+        main_frame.rowconfigure(2, weight=1)
+        
+        # Status bar for unsaved changes
+        self.status_bar = ttk.Label(main_frame, text="", 
+                                    font=('Helvetica', 9, 'bold'),
+                                    foreground="red", background="#ffe6e6")
+        self.status_bar.grid(row=0, column=0, pady=(0, 5), sticky=(tk.W, tk.E))
+        self.status_bar.grid_remove()  # Hidden by default
         
         # Title
         title_label = ttk.Label(main_frame, text="VIN Recall Tracker", 
                                font=('Helvetica', 16, 'bold'))
-        title_label.grid(row=0, column=0, pady=(0, 10), sticky=tk.W)
+        title_label.grid(row=1, column=0, pady=(0, 10), sticky=tk.W)
         
         # Buttons frame
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=0, column=0, pady=(0, 10), sticky=tk.E)
+        button_frame.grid(row=1, column=0, pady=(0, 10), sticky=tk.E)
         
         check_vins_btn = ttk.Button(button_frame, text="NHTSA Check VINs", 
                                     command=self.check_vins_from_nhtsa,
@@ -92,7 +101,7 @@ class RecallTrackerGUI:
         
         # Paned window for VIN list and details
         paned = ttk.PanedWindow(main_frame, orient=tk.HORIZONTAL)
-        paned.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        paned.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Left panel - VIN list
         left_frame = ttk.Frame(paned, padding="5")
@@ -136,17 +145,20 @@ class RecallTrackerGUI:
                                     padding="10")
         info_frame.pack(fill=tk.X, pady=(0, 10))
         
-        # VIN Entry (read-only but selectable for copying)
-        vin_label_text = ttk.Label(info_frame, text="VIN:", 
-                                   font=('Helvetica', 10, 'bold'))
-        vin_label_text.grid(row=0, column=0, sticky=tk.W, pady=2)
+        # VIN Entry (read-only but selectable for copying) - positioned left
+        vin_container = ttk.Frame(info_frame)
+        vin_container.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=2)
         
-        self.vin_entry = tk.Entry(info_frame, 
+        vin_label_text = ttk.Label(vin_container, text="VIN:", 
+                                   font=('Helvetica', 10, 'bold'))
+        vin_label_text.pack(side=tk.LEFT)
+        
+        self.vin_entry = tk.Entry(vin_container, 
                                   font=('Courier', 11),
                                   width=20,
                                   relief=tk.FLAT,
                                   readonlybackground='#f0f0f0')
-        self.vin_entry.grid(row=0, column=1, sticky=tk.W, pady=2, padx=(5, 0))
+        self.vin_entry.pack(side=tk.LEFT, padx=(5, 0))
         self.vin_entry.insert(0, '-')
         self.vin_entry.config(state='readonly')
         
@@ -156,8 +168,23 @@ class RecallTrackerGUI:
         self.url_frame = ttk.Frame(info_frame)
         self.url_frame.grid(row=2, column=0, sticky=tk.W, pady=5)
         
-        # Recalls frame
-        recalls_frame = ttk.LabelFrame(self.details_frame, text="Recalls", 
+        # Recalls frame with filter
+        recalls_header = ttk.Frame(self.details_frame)
+        recalls_header.pack(fill=tk.X, pady=(5, 0))
+        
+        ttk.Label(recalls_header, text="Recalls", 
+                 font=('Helvetica', 11, 'bold')).pack(side=tk.LEFT)
+        
+        self.show_resolved_var = tk.BooleanVar(value=self.show_resolved)
+        show_resolved_check = ttk.Checkbutton(
+            recalls_header,
+            text="Show Resolved",
+            variable=self.show_resolved_var,
+            command=self.toggle_show_resolved
+        )
+        show_resolved_check.pack(side=tk.RIGHT, padx=5)
+        
+        recalls_frame = ttk.LabelFrame(self.details_frame, text="", 
                                        padding="10")
         recalls_frame.pack(fill=tk.BOTH, expand=True)
         
@@ -273,15 +300,30 @@ class RecallTrackerGUI:
             widget.destroy()
         
         recalls = data.get('recalls', [])
+        
+        # Filter recalls based on show_resolved setting
+        if not self.show_resolved:
+            filtered_recalls = [(i, r) for i, r in enumerate(recalls) 
+                               if not r.get('resolved', False)]
+        else:
+            filtered_recalls = [(i, r) for i, r in enumerate(recalls)]
+        
         if not recalls:
             no_recalls_label = ttk.Label(self.scrollable_recalls, 
                                         text="✓ No recalls found for this vehicle",
                                         foreground="green",
                                         font=('Helvetica', 11, 'bold'))
             no_recalls_label.pack(pady=20)
+        elif not filtered_recalls:
+            # All recalls are resolved and hidden
+            all_resolved_label = ttk.Label(self.scrollable_recalls, 
+                                          text="✓ All recalls resolved (enable 'Show Resolved' to view)",
+                                          foreground="green",
+                                          font=('Helvetica', 11, 'bold'))
+            all_resolved_label.pack(pady=20)
         else:
-            for i, recall in enumerate(recalls):
-                self.create_recall_widget(index, i, recall)
+            for recall_index, recall in filtered_recalls:
+                self.create_recall_widget(index, recall_index, recall)
     
     def create_recall_widget(self, vin_index, recall_index, recall):
         """Create a widget for a single recall."""
@@ -373,12 +415,29 @@ class RecallTrackerGUI:
             # Remove resolution date
             recalls[recall_index].pop('resolved_date', None)
         
+        # Mark as having unsaved changes
+        self.has_unsaved_changes = True
+        self.update_status_bar()
+        
         # Refresh the display
         self.populate_vin_list()
         self.display_vin_details(vin_index)
-        
-        messagebox.showinfo("Updated", 
-            "Recall status updated. Click 'Save Changes' to persist.")
+    
+    def update_status_bar(self):
+        """Update the status bar to show unsaved changes."""
+        if self.has_unsaved_changes:
+            self.status_bar.config(text="  ⚠ Unsaved changes - Click 'Save Changes' to save  ")
+            self.status_bar.grid()
+        else:
+            self.status_bar.grid_remove()
+    
+    def toggle_show_resolved(self):
+        """Toggle the visibility of resolved recalls."""
+        self.show_resolved = self.show_resolved_var.get()
+        # Refresh the current display
+        selection = self.vin_listbox.curselection()
+        if selection:
+            self.display_vin_details(selection[0])
     
     def load_vins_from_settings(self):
         """Load VINs from the settings JSON file."""
@@ -627,6 +686,8 @@ class RecallTrackerGUI:
         try:
             with open(self.data_file, 'w') as f:
                 json.dump(self.recall_data, f, indent=2)
+            self.has_unsaved_changes = False
+            self.update_status_bar()
             messagebox.showinfo("Saved", "Changes saved successfully!")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save: {str(e)}")

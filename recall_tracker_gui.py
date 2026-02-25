@@ -100,17 +100,25 @@ class RecallTrackerGUI:
         
         ttk.Label(left_frame, text="VINs", font=('Helvetica', 12, 'bold')).pack(anchor=tk.W)
         
-        # VIN Listbox with scrollbar
+        # VIN Listbox with scrollbars
         list_frame = ttk.Frame(left_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
         
-        scrollbar = ttk.Scrollbar(list_frame)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        # Vertical scrollbar
+        v_scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL)
+        v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        self.vin_listbox = tk.Listbox(list_frame, yscrollcommand=scrollbar.set,
-                                      font=('Courier', 10))
+        # Horizontal scrollbar
+        h_scrollbar = ttk.Scrollbar(list_frame, orient=tk.HORIZONTAL)
+        h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        self.vin_listbox = tk.Listbox(list_frame, 
+                                      yscrollcommand=v_scrollbar.set,
+                                      xscrollcommand=h_scrollbar.set,
+                                      font=('Courier', 9))
         self.vin_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.config(command=self.vin_listbox.yview)
+        v_scrollbar.config(command=self.vin_listbox.yview)
+        h_scrollbar.config(command=self.vin_listbox.xview)
         
         self.vin_listbox.bind('<<ListboxSelect>>', self.on_vin_select)
         
@@ -128,9 +136,19 @@ class RecallTrackerGUI:
                                     padding="10")
         info_frame.pack(fill=tk.X, pady=(0, 10))
         
-        self.vin_label = ttk.Label(info_frame, text="VIN: -", 
-                                   font=('Courier', 11, 'bold'))
-        self.vin_label.grid(row=0, column=0, sticky=tk.W, pady=2)
+        # VIN Entry (read-only but selectable for copying)
+        vin_label_text = ttk.Label(info_frame, text="VIN:", 
+                                   font=('Helvetica', 10, 'bold'))
+        vin_label_text.grid(row=0, column=0, sticky=tk.W, pady=2)
+        
+        self.vin_entry = tk.Entry(info_frame, 
+                                  font=('Courier', 11),
+                                  width=20,
+                                  relief=tk.FLAT,
+                                  readonlybackground='#f0f0f0')
+        self.vin_entry.grid(row=0, column=1, sticky=tk.W, pady=2, padx=(5, 0))
+        self.vin_entry.insert(0, '-')
+        self.vin_entry.config(state='readonly')
         
         self.vehicle_label = ttk.Label(info_frame, text="Vehicle: -")
         self.vehicle_label.grid(row=1, column=0, sticky=tk.W, pady=2)
@@ -156,6 +174,12 @@ class RecallTrackerGUI:
         
         canvas.create_window((0, 0), window=self.scrollable_recalls, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Bind mouse wheel scrolling
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
         
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
@@ -194,7 +218,8 @@ class RecallTrackerGUI:
                 resolved_count = sum(1 for r in item['recalls'] 
                                    if r.get('resolved', False))
             
-            display_text = f"{vin} - {year} {make} {model} ({resolved_count}/{recall_count} resolved)"
+            # Reordered: Make/Model first, then VIN, then status
+            display_text = f"{year} {make} {model} - {vin} ({resolved_count}/{recall_count} resolved)"
             self.vin_listbox.insert(tk.END, display_text)
     
     def on_vin_select(self, event):
@@ -219,7 +244,12 @@ class RecallTrackerGUI:
         model = data.get('model', 'Unknown')
         year = data.get('year', 'Unknown')
         
-        self.vin_label.config(text=f"VIN: {vin}")
+        # Update VIN entry (make it editable temporarily to change value)
+        self.vin_entry.config(state='normal')
+        self.vin_entry.delete(0, tk.END)
+        self.vin_entry.insert(0, vin)
+        self.vin_entry.config(state='readonly')
+        
         self.vehicle_label.config(text=f"Vehicle: {year} {make} {model}")
         
         # Clear and update manufacturer URL

@@ -7,7 +7,9 @@ A Python application to check Vehicle Identification Numbers (VINs) against the 
 - **Automated VIN Checking**: Query NHTSA's official API to retrieve recall information directly from the GUI
 - **Graphical Interface**: All-in-one application - no command line needed!
 - **Recall Tracking**: Mark recalls as resolved and track resolution dates
-- **Manufacturer Links**: Quick access to manufacturer-specific recall lookup pages
+- **Smart Status Notifications**: Visual indicator when you have unsaved changes
+- **Show/Hide Resolved Recalls**: Filter to focus only on open recalls
+- **Manufacturer Links**: Quick access to manufacturer-specific recall lookup pages (easily customizable via JSON)
 - **Persistent Storage**: Track recall status across multiple sessions
 - **Smart Updates**: Preserves your resolution tracking when refreshing recall data
 
@@ -36,8 +38,10 @@ When you use `curl` or web scraping, manufacturer websites often block automated
    pip install -r requirements.txt
    ```
 
-3. **Create `vin_settings.json`** with your VINs:
+3. **Create configuration files**:
 
+   **a) Create `vin_settings.json`** with your VINs:
+   
    Copy the example file and add your VINs:
    
    ```bash
@@ -56,6 +60,10 @@ When you use `curl` or web scraping, manufacturer websites often block automated
    ```
    
    **Note**: This file is ignored by git to keep your VIN data private.
+   
+   **b) (Optional) Customize manufacturer URLs**:
+   
+   The `manufacturer_urls.json` file contains recall lookup URLs for 30+ manufacturers. You can edit this file to update URLs or add new manufacturers without modifying code.
 
 4. **Launch the GUI**:
 
@@ -102,11 +110,16 @@ Click the **"NHTSA Check VINs"** button at any time to:
 2. **View recall details** in the right panel
 3. **Click the manufacturer link** to verify completion on their website
 4. **Check the "Resolved" box** if the recall has been completed
-5. **Click "Save Changes"** to persist your tracking
+5. **A red status bar appears** showing "⚠ Unsaved changes - Click 'Save Changes' to save"
+6. **Click "Save Changes"** to persist your tracking
+7. **Use "Show Resolved" checkbox** to hide/show completed recalls
 
 The GUI displays:
 - Vehicle information (year, make, model)
+- VIN (easily copyable for pasting into manufacturer websites)
 - Clickable manufacturer recall lookup URLs
+- Show/Hide Resolved filter to focus on open recalls
+- Unsaved changes notification bar
 - Detailed recall information including:
   - NHTSA campaign numbers
   - Affected components
@@ -151,7 +164,7 @@ recall_check_results.json (Updated with resolution status)
 
 ### Supported Manufacturers
 
-The tool includes direct links to recall lookup pages for 30+ manufacturers including:
+The tool includes direct links to recall lookup pages for 30+ manufacturers (configured in `manufacturer_urls.json`):
 - Hyundai, Kia, Genesis
 - Jeep, Dodge, Chrysler, RAM, Fiat, Alfa Romeo (Stellantis)
 - Ford, Lincoln
@@ -161,19 +174,22 @@ The tool includes direct links to recall lookup pages for 30+ manufacturers incl
 - Nissan, Infiniti
 - Mazda, Subaru, Volkswagen, Audi, Porsche, BMW, Mercedes-Benz, Volvo
 - Tesla, Rivian, Lucid
-Your VINs (you create this)
+
+You can easily add or update manufacturer URLs by editing the `manufacturer_urls.json` file.
+
+## File Structure
+
+```
 ├── recall_tracker_gui.py           # Main GUI application (START HERE)
-├── manufacturer_urls.py            # Manufacturer recall lookup URLs
-├── recall_check_results.json       # Output: Recall data with tracking
+├── manufacturer_urls.py            # Code to load manufacturer recall URLs
+├── manufacturer_urls.json          # Manufacturer recall lookup URLs (editable)
 ├── vin_recall_checker.py           # Command-line version (optional)
-├── .venv/                          # Virtual environment (created during setup)
-├── .gitignore                      # Git ignore file
-├── vin_settings.json               # Input: List of VINs to check
-├── vin_recall_checker.py           # Command-line checker (fetches from NHTSA)
-├── recall_tracker_gui.py           # GUI application (track resolution)
-├── manufacturer_urls.py            # Manufacturer recall lookup URLs
-├── recall_check_results.json       # Output: Recall data with tracking status
+├── vin_settings.json               # Input: List of VINs to check (git-ignored)
+├── vin_settings.json.example       # Template for VIN settings
+├── recall_check_results.json       # Output: Recall data with tracking (git-ignored)
 ├── requirements.txt                # Python dependencies
+├── .venv/                          # Virtual environment (created during setup)
+├── .gitignore                      # Protects your private data
 └── README.md                       # This file
 ```
 
@@ -233,11 +249,15 @@ Your VINs (you create this)
 
 **Want to add more VINs**: Edit `vin_settings.json`, then click "NHTSA Check VINs"
 
-**Changes not saving**: Click "Save Changes" button before closing
+**Changes not saving**: Look for the red status bar showing unsaved changes, then click "Save Changes" button
+
+**Want to hide resolved recalls**: Uncheck the "Show Resolved" checkbox in the Recalls section
+
+**Manufacturer URL not working**: Edit `manufacturer_urls.json` to update the URL for that manufacturer
 
 **Connection errors**: Check your internet connection; NHTSA API may be temporarily unavailable
 
-**Want to refresh data**: Run `vin_recall_checker.py` again - it will update the recall list while preserving your resolution tracking
+**Want to refresh data**: Click "NHTSA Check VINs" button - it will update the recall list while preserving your resolution tracking
 
 ## Privacy & Security
 

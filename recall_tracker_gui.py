@@ -15,6 +15,9 @@ class RecallTrackerGUI:
         self.root.title("VIN Recall Tracker")
         self.root.geometry("900x600")
         
+        # Set window icon for both title bar and taskbar
+        self.set_window_icon()
+        
         self.data_file = 'recall_check_results.json'
         self.settings_file = 'vin_settings.json'
         self.recall_data = []
@@ -24,6 +27,33 @@ class RecallTrackerGUI:
         
         self.setup_ui()
         self.check_startup_conditions()
+    
+    def set_window_icon(self):
+        """Set the window icon for both title bar and taskbar."""
+        import os
+        import sys
+        
+        try:
+            # For Windows taskbar icon to work properly
+            if sys.platform == 'win32':
+                # Set app ID for Windows taskbar grouping
+                try:
+                    import ctypes
+                    myappid = 'tendimensions.vinrecallcheck.1.0'
+                    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+                except:
+                    pass
+            
+            # Set the icon
+            if os.path.exists('logo.ico'):
+                self.root.iconbitmap('logo.ico')
+            elif os.path.exists('logo.png'):
+                # Fallback to PNG for non-Windows or if .ico doesn't exist
+                logo = tk.PhotoImage(file='logo.png')
+                self.root.iconphoto(True, logo)
+        except Exception as e:
+            print(f"Warning: Could not load icon: {e}")  # Debug info
+            pass  # If icon fails to load, continue without it
         
     def check_startup_conditions(self):
         """Check for required files on startup."""

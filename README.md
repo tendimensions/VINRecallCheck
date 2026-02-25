@@ -37,6 +37,15 @@ When you use `curl` or web scraping, manufacturer websites often block automated
    ```
 
 3. **Create `vin_settings.json`** with your VINs:
+
+   Copy the example file and add your VINs:
+   
+   ```bash
+   cp vin_settings.json.example vin_settings.json
+   ```
+   
+   Then edit `vin_settings.json`:
+   
    ```json
    {
      "vins": [
@@ -45,8 +54,20 @@ When you use `curl` or web scraping, manufacturer websites often block automated
      ]
    }
    ```
+   
+   **Note**: This file is ignored by git to keep your VIN data private.
 
-4. *Quick Start
+4. **Launch the GUI**:
+
+   ```bash
+   python recall_tracker_gui.py
+   ```
+
+That's it! The GUI will guide you through the rest.
+
+## Usage
+
+### Quick Start
 
 Simply run the GUI application:
 
@@ -54,9 +75,9 @@ Simply run the GUI application:
 python recall_tracker_gui.py
 ```
 
-The application will:
-- Check if `vin_settings.json` exists (prompts you to create it if missing)
-- Offer to fetch recall data from NHTSA if none exists
+The application will automatically:
+- Check if `vin_settings.json` exists (shows setup instructions if missing)
+- Check if recall data exists (offers to fetch from NHTSA if missing)
 - Display all your vehicles and their recall status
 
 ### Working with the GUI
@@ -64,8 +85,8 @@ The application will:
 #### First Time Setup
 
 1. **Launch the application**
-2. If `vin_settings.json` doesn't exist, create it with your VINs
-3. Click **"NHTSA Check VINs"** button to fetch recall data
+2. If `vin_settings.json` doesn't exist, the GUI will show you the format to create it
+3. Create the file, then restart the GUI (or click **"NHTSA Check VINs"**)
 4. Wait for the progress window to complete
 
 #### Checking for New Recalls

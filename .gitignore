@@ -62,5 +62,6 @@ coverage.xml
 Thumbs.db
 
 # Project specific
+vin_settings.json
 recall_check_results.json
 *.log

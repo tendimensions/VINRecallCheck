@@ -13,7 +13,7 @@ class RecallTrackerGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("VIN Recall Tracker")
-        self.root.geometry("900x600")
+        self.root.geometry("1350x900")
         
         # Set window icon for both title bar and taskbar
         self.set_window_icon()
@@ -219,26 +219,27 @@ class RecallTrackerGUI:
         recalls_frame.pack(fill=tk.BOTH, expand=True)
         
         # Canvas with scrollbar for recalls
-        canvas = tk.Canvas(recalls_frame)
-        scrollbar = ttk.Scrollbar(recalls_frame, orient="vertical", 
-                                  command=canvas.yview)
-        self.scrollable_recalls = ttk.Frame(canvas)
-        
+        self.recalls_canvas = tk.Canvas(recalls_frame)
+        scrollbar = ttk.Scrollbar(recalls_frame, orient="vertical",
+                                  command=self.recalls_canvas.yview)
+        self.scrollable_recalls = ttk.Frame(self.recalls_canvas)
+
         self.scrollable_recalls.bind(
             "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+            lambda e: self.recalls_canvas.configure(
+                scrollregion=self.recalls_canvas.bbox("all"))
         )
-        
-        canvas.create_window((0, 0), window=self.scrollable_recalls, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-        
+
+        self.recalls_canvas.create_window((0, 0), window=self.scrollable_recalls, anchor="nw")
+        self.recalls_canvas.configure(yscrollcommand=scrollbar.set)
+
         # Bind mouse wheel scrolling
         def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        
-        canvas.bind_all("<MouseWheel>", _on_mousewheel)
-        
-        canvas.pack(side="left", fill="both", expand=True)
+            self.recalls_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+        self.recalls_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        self.recalls_canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
     
     def load_data(self):
@@ -339,14 +340,14 @@ class RecallTrackerGUI:
             filtered_recalls = [(i, r) for i, r in enumerate(recalls)]
         
         if not recalls:
-            no_recalls_label = ttk.Label(self.scrollable_recalls, 
+            no_recalls_label = ttk.Label(self.scrollable_recalls,
                                         text="✓ No recalls found for this vehicle",
                                         foreground="green",
                                         font=('Helvetica', 11, 'bold'))
             no_recalls_label.pack(pady=20)
         elif not filtered_recalls:
             # All recalls are resolved and hidden
-            all_resolved_label = ttk.Label(self.scrollable_recalls, 
+            all_resolved_label = ttk.Label(self.scrollable_recalls,
                                           text="✓ All recalls resolved (enable 'Show Resolved' to view)",
                                           foreground="green",
                                           font=('Helvetica', 11, 'bold'))
@@ -354,6 +355,9 @@ class RecallTrackerGUI:
         else:
             for recall_index, recall in filtered_recalls:
                 self.create_recall_widget(index, recall_index, recall)
+
+        # Always scroll back to the top after rebuilding the list
+        self.recalls_canvas.yview_moveto(0)
     
     def create_recall_widget(self, vin_index, recall_index, recall):
         """Create a widget for a single recall."""
@@ -397,27 +401,30 @@ class RecallTrackerGUI:
         
         # Summary
         summary = recall.get('summary', 'N/A')
-        summary_text = tk.Text(details_frame, height=3, wrap=tk.WORD, 
+        summary_text = tk.Text(details_frame, height=1, wrap=tk.WORD,
                               font=('Helvetica', 9))
         summary_text.insert('1.0', f"Summary: {summary}")
         summary_text.config(state=tk.DISABLED, background='#f0f0f0')
         summary_text.pack(fill=tk.X, pady=2)
-        
+        summary_text.bind('<Configure>', lambda e, t=summary_text: self._auto_resize_text(t))
+
         # Consequence
         consequence = recall.get('consequence', 'N/A')
-        consequence_text = tk.Text(details_frame, height=2, wrap=tk.WORD,
+        consequence_text = tk.Text(details_frame, height=1, wrap=tk.WORD,
                                   font=('Helvetica', 9))
         consequence_text.insert('1.0', f"Consequence: {consequence}")
         consequence_text.config(state=tk.DISABLED, background='#fff5f5')
         consequence_text.pack(fill=tk.X, pady=2)
-        
+        consequence_text.bind('<Configure>', lambda e, t=consequence_text: self._auto_resize_text(t))
+
         # Remedy
         remedy = recall.get('remedy', 'N/A')
-        remedy_text = tk.Text(details_frame, height=2, wrap=tk.WORD,
+        remedy_text = tk.Text(details_frame, height=1, wrap=tk.WORD,
                              font=('Helvetica', 9))
         remedy_text.insert('1.0', f"Remedy: {remedy}")
         remedy_text.config(state=tk.DISABLED, background='#f5fff5')
         remedy_text.pack(fill=tk.X, pady=2)
+        remedy_text.bind('<Configure>', lambda e, t=remedy_text: self._auto_resize_text(t))
         
         # Resolution info if resolved
         if resolved and recall.get('resolved_date'):
@@ -427,6 +434,12 @@ class RecallTrackerGUI:
                                       font=('Helvetica', 9, 'italic'))
             resolved_label.pack(pady=2)
     
+    def _auto_resize_text(self, widget):
+        """Resize a Text widget to fit its content without internal scrolling."""
+        result = widget.count('1.0', 'end', 'displaylines')
+        if result:
+            widget.config(height=max(1, result[0]))
+
     def toggle_resolved(self, vin_index, recall_index, is_resolved):
         """Toggle the resolved status of a recall."""
         if vin_index >= len(self.recall_data):

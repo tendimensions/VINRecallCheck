@@ -98,7 +98,7 @@ class RecallTrackerGUI:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(2, weight=1)
+        main_frame.rowconfigure(3, weight=1)
         
         # Status bar for unsaved changes
         self.status_bar = ttk.Label(main_frame, text="", 
@@ -129,9 +129,21 @@ class RecallTrackerGUI:
                              command=self.save_data)
         save_btn.grid(row=0, column=2, padx=5)
         
+        # Info panel
+        info_frame = ttk.LabelFrame(main_frame, text="How This Works", padding="8")
+        info_frame.grid(row=2, column=0, pady=(0, 8), sticky=(tk.W, tk.E))
+
+        info_text = (
+            "NHTSA Check VINs fetches open recall campaigns by make/model/year — the NHTSA public API does not track "
+            "whether your specific VIN has been serviced at a dealer. To verify completion, click the manufacturer link "
+            "below, paste your VIN into their site, and confirm the recall is closed. Then mark it Resolved here manually."
+        )
+        ttk.Label(info_frame, text=info_text, wraplength=1100, justify=tk.LEFT,
+                  font=('Helvetica', 9), foreground='#555555').pack(anchor=tk.W)
+
         # Paned window for VIN list and details
         paned = ttk.PanedWindow(main_frame, orient=tk.HORIZONTAL)
-        paned.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        paned.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Left panel - VIN list
         left_frame = ttk.Frame(paned, padding="5")
@@ -183,7 +195,7 @@ class RecallTrackerGUI:
                                    font=('Helvetica', 10, 'bold'))
         vin_label_text.pack(side=tk.LEFT)
         
-        self.vin_entry = tk.Entry(vin_container, 
+        self.vin_entry = tk.Entry(vin_container,
                                   font=('Courier', 11),
                                   width=20,
                                   relief=tk.FLAT,
@@ -191,6 +203,10 @@ class RecallTrackerGUI:
         self.vin_entry.pack(side=tk.LEFT, padx=(5, 0))
         self.vin_entry.insert(0, '-')
         self.vin_entry.config(state='readonly')
+
+        self.copy_btn = ttk.Button(vin_container, text="Copy", width=6,
+                                   command=self.copy_vin_to_clipboard)
+        self.copy_btn.pack(side=tk.LEFT, padx=(6, 0))
         
         self.vehicle_label = ttk.Label(info_frame, text="Vehicle: -")
         self.vehicle_label.grid(row=1, column=0, sticky=tk.W, pady=2)
@@ -474,6 +490,14 @@ class RecallTrackerGUI:
         else:
             self.status_bar.grid_remove()
     
+    def copy_vin_to_clipboard(self):
+        vin = self.vin_entry.get()
+        if vin and vin != '-':
+            self.root.clipboard_clear()
+            self.root.clipboard_append(vin)
+            self.copy_btn.config(text="Copied!")
+            self.root.after(1500, lambda: self.copy_btn.config(text="Copy"))
+
     def toggle_show_resolved(self):
         """Toggle the visibility of resolved recalls."""
         self.show_resolved = self.show_resolved_var.get()
